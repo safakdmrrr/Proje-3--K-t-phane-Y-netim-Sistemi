@@ -1,0 +1,216 @@
+import sys
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QTabWidget, QListWidget, QFormLayout
+from PyQt5.QtGui import QColor
+
+import random
+
+class LibrarySystem:
+    def __init__(self):
+        self.members = []
+        self.books = []
+        self.borrowed_books = []
+
+    def add_member(self, name, surname, age):
+        member_id = self.generate_member_id()
+        member_info = {"id": member_id, "name": name, "surname": surname, "age": age}
+        self.members.append(member_info)
+        return member_info
+
+    def add_book(self, title, author, publish_date):
+        book_info = {"title": title, "author": author, "publish_date": publish_date}
+        self.books.append(book_info)
+        return book_info
+
+    def generate_member_id(self):
+        return random.randint(10000, 99999)
+
+    def find_member(self, name_to_search):
+        normalized_search_name = name_to_search.lower()
+        for member in self.members:
+            normalized_member_name = f"{member['name']} {member['surname']}".lower()
+            if normalized_search_name == normalized_member_name:
+                return member
+        return None
+
+    def find_book(self, title_to_search):
+        normalized_search_title = title_to_search.lower()
+        for book in self.books:
+            normalized_book_title = book["title"].lower()
+            if normalized_search_title == normalized_book_title:
+                return book
+        return None
+
+    def borrow_book(self, member_id, book_title):
+        book = self.find_book(book_title)
+        if book:
+            self.borrowed_books.append({"member_id": member_id, "book": book})
+            return True
+        return False
+
+    def return_book(self, member_id, book_title):
+        for borrowed_book in self.borrowed_books:
+            if borrowed_book["member_id"] == member_id and borrowed_book["book"]["title"].lower() == book_title.lower():
+                self.borrowed_books.remove(borrowed_book)
+                return True
+        return False
+
+    def get_borrowed_books_by_member(self, member_id):
+        borrowed_by_member = []
+        for borrowed_book in self.borrowed_books:
+            if borrowed_book["member_id"] == member_id:
+                borrowed_by_member.append(borrowed_book["book"])
+        return borrowed_by_member
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Kütüphane Yönetim Sistemi")
+        self.resize(600, 400)  # Set initial window size
+
+        self.library_system = LibrarySystem()
+
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        self.main_layout = QVBoxLayout(self.central_widget)
+
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setStyleSheet("background-color: #D2B48C;")  # Set background color to light brown
+        self.main_layout.addWidget(self.tab_widget)
+
+        self.borrow_tab = QWidget()
+        self.books_tab = QWidget()
+        self.members_tab = QWidget()
+
+        self.tab_widget.addTab(self.borrow_tab, "Ödünç İşlemler")
+        self.tab_widget.addTab(self.books_tab, "Kitaplar")
+        self.tab_widget.addTab(self.members_tab, "Üye Bilgileri")
+
+        self.setup_borrow_tab()
+        self.setup_books_tab()
+        self.setup_members_tab()
+
+    def setup_borrow_tab(self):
+        layout = QVBoxLayout(self.borrow_tab)
+        self.borrow_text_edit = QLineEdit()
+        layout.addWidget(self.borrow_text_edit)
+
+        button_layout = QVBoxLayout()
+        borrow_button = QPushButton("Ödünç Al")
+        borrow_button.clicked.connect(self.borrow_book)
+        button_layout.addWidget(borrow_button)
+
+        return_button = QPushButton("İade Et")
+        return_button.clicked.connect(self.return_book)
+        button_layout.addWidget(return_button)
+
+        info_button = QPushButton("Ödünç Bilgisi")
+        info_button.clicked.connect(self.borrow_info)
+        button_layout.addWidget(info_button)
+
+        layout.addLayout(button_layout)
+
+    def setup_books_tab(self):
+        layout = QVBoxLayout(self.books_tab)
+        add_book_form = QFormLayout()
+
+        self.book_title_input = QLineEdit()
+        add_book_form.addRow("Kitap Adı:", self.book_title_input)
+
+        self.book_author_input = QLineEdit()
+        add_book_form.addRow("Yazarı:", self.book_author_input)
+
+        self.book_publish_date_input = QLineEdit()
+        add_book_form.addRow("Yayın Tarihi:", self.book_publish_date_input)
+
+        add_book_button = QPushButton("Kitap Ekle")
+        add_book_button.clicked.connect(self.add_book)
+        add_book_form.addRow(add_book_button)
+
+        layout.addLayout(add_book_form)
+
+    def setup_members_tab(self):
+        layout = QVBoxLayout(self.members_tab)
+        add_member_form = QFormLayout()
+
+        self.member_name_input = QLineEdit()
+        add_member_form.addRow("Ad:", self.member_name_input)
+
+        self.member_surname_input = QLineEdit()
+        add_member_form.addRow("Soyad:", self.member_surname_input)
+
+        self.member_age_input = QLineEdit()
+        add_member_form.addRow("Yaş:", self.member_age_input)
+
+        add_member_button = QPushButton("Üye Ekle")
+        add_member_button.clicked.connect(self.add_member)
+        add_member_form.addRow(add_member_button)
+
+        layout.addLayout(add_member_form)
+
+    def add_member(self):
+        name = self.member_name_input.text().strip()
+        surname = self.member_surname_input.text().strip()
+        age = self.member_age_input.text().strip()
+
+        if name and surname and age:
+            member_info = self.library_system.add_member(name, surname, age)
+            member_display_info = f"{member_info['name']} {member_info['surname']} (Yaş: {member_info['age']}) - ID: {member_info['id']}"
+            QMessageBox.information(self, "Başarılı", f"{member_display_info} sisteme eklenmiştir.")
+            self.member_name_input.clear()
+            self.member_surname_input.clear()
+            self.member_age_input.clear()
+        else:
+            QMessageBox.warning(self, "Uyarı", "Lütfen tüm alanları doldurun.")
+
+    def add_book(self):
+        title = self.book_title_input.text().strip()
+        author = self.book_author_input.text().strip()
+        publish_date = self.book_publish_date_input.text().strip()
+
+        if title and author and publish_date:
+            book_info = self.library_system.add_book(title, author, publish_date)
+            book_display_info = f"{book_info['title']} - {book_info['author']} ({book_info['publish_date']})"
+            QMessageBox.information(self, "Başarılı", f"{book_display_info} sisteme eklenmiştir.")
+            self.book_title_input.clear()
+            self.book_author_input.clear()
+            self.book_publish_date_input.clear()
+        else:
+            QMessageBox.warning(self, "Uyarı", "Lütfen tüm alanları doldurun.")
+
+    def borrow_book(self):
+        book_title = self.borrow_text_edit.text().strip()
+        if book_title:
+            success = self.library_system.borrow_book(12345, book_title)  # Use actual member ID here
+            if success:
+                QMessageBox.information(self, "Başarılı", f"{book_title} başarıyla ödünç alındı.")
+            else:
+                QMessageBox.warning(self, "Uyarı", f"{book_title} kitabı ödünç alınamadı.")
+        else:
+            QMessageBox.warning(self, "Uyarı", "Lütfen kitap adını girin.")
+
+    def return_book(self):
+        book_title = self.borrow_text_edit.text().strip()
+        if book_title:
+            success = self.library_system.return_book(12345, book_title)  # Use actual member ID here
+            if success:
+                QMessageBox.information(self, "Başarılı", f"{book_title} başarıyla iade edildi.")
+            else:
+                QMessageBox.warning(self, "Uyarı", f"{book_title} kitabı iade edilemedi.")
+        else:
+            QMessageBox.warning(self, "Uyarı", "Lütfen kitap adını girin.")
+
+    def borrow_info(self):
+        borrowed_books = self.library_system.get_borrowed_books_by_member(12345)  # Use actual member ID here
+        if borrowed_books:
+            info_text = "Ödünçteki Kitaplar:\n"
+            for book in borrowed_books:
+                info_text += f"{book['title']} - {book['author']} ({book['publish_date']})\n"
+            QMessageBox.information(self, "Ödünçteki Kitaplar", info_text)
+        else:
+            QMessageBox.information(self, "Ödünçteki Kitaplar", "Ödünçte hiç kitap bulunmamaktadır.")
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())
